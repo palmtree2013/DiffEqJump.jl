@@ -1,5 +1,8 @@
 using DiffEqJump, Random
 using OrdinaryDiffEq, Plots
+
+
+
 rates1 = [0.1/1000.0]
 reactant_stoich1 = [[1=>1,2=>1]]
 net_stoich1 = [[1=>-1,2=>1]]
