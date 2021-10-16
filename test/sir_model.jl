@@ -1,4 +1,3 @@
-
 using DiffEqJump, DiffEqBase, OrdinaryDiffEq
 using Test
 using StableRNGs
@@ -19,7 +18,7 @@ end
 jump2 = ConstantRateJump(rate,affect!)
 
 prob = DiscreteProblem([999.0,1.0,0.0],(0.0,250.0))
-jump_prob = JumpProblem(prob,MNRM(),jump,jump2; rng=rng)
+jump_prob = JumpProblem(prob,Direct(),jump,jump2; rng=rng)
 integrator = init(jump_prob,FunctionMap())
 
 condition(u,t,integrator) = t == 100

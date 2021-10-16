@@ -14,20 +14,20 @@ mutable struct MNRMJumpAggregation{T,S,F1,F2,RNG} <: AbstractSSAJumpAggregator
   rng::RNG
   internal_waitingtimes::Vector{T}
 end
-MNRMJumpAggregation(nj::Int, njt::T, et::T, crs::Vector{T}, sr::T, maj::S, rs::F1, affs!::F2, sps::Tuple{Bool,Bool}, rng::RNG; internal_times = internal_times, kwargs...) where {T,S,F1,F2,RNG} =
-MNRMJumpAggregation{T,S,F1,F2,RNG}(nj, nj, njt, et, crs, sr, maj, rs, affs!, sps, rng, internal_times)
+MNRMJumpAggregation(nj::Int, njt::T, et::T, crs::Vector{T}, sr::T, maj::S, rs::F1, affs!::F2, sps::Tuple{Bool,Bool}, rng::RNG; internal_waitingtimes, kwargs...) where {T,S,F1,F2,RNG} =
+MNRMJumpAggregation{T,S,F1,F2,RNG}(nj, nj, njt, et, crs, sr, maj, rs, affs!, sps, rng, internal_waitingtimes)
 
 
 
 
   # creating the JumpAggregation structure (tuple-based constant jumps)
-function aggregate(aggregator::MNRM, u, p, t, end_time, constant_jumps, ma_jumps, save_positions, rng, kwargs...)
+function aggregate(aggregator::MNRM, u, p, t, end_time, constant_jumps, ma_jumps, save_positions, rng; kwargs...)
 
     # handle constant jumps using tuples
     rates, affects! = get_jump_info_tuples(constant_jumps)
     num_reactions = get_num_majumps(ma_jumps) + length(constant_jumps)
-    internal_waitingtimes = convert(Vector{typeof(t)},zeros(num_reactions))
-    build_jump_aggregation(MNRMJumpAggregation, u, p, t, end_time, ma_jumps, rates, affects!, save_positions, rng; internal_times = internal_waitingtimes, kwargs...)
+    internal_waitingtimes = zeros(typeof(t),num_reactions)
+    build_jump_aggregation(MNRMJumpAggregation, u, p, t, end_time, ma_jumps, rates, affects!, save_positions, rng; internal_waitingtimes = internal_waitingtimes, kwargs...)
 end
 
 function initialize!(p::MNRMJumpAggregation, integrator, u, params, t)

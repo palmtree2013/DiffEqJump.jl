@@ -71,7 +71,7 @@ export JumpProblem
 
 export SplitCoupledJumpProblem
 
-export Direct, DirectFW, SortingDirect, DirectCR
+export Direct, DirectFW, SortingDirect, DirectCR, MNRM
 export BracketData, RSSA
 export FRM, FRMFW, NRM
 export RSSACR, RDirect
