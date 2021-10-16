@@ -51,39 +51,36 @@ end
     
     @unpack internal_waitingtimes, react_rates = p
     fill_react_rates!(p, u, t)
-    dt_list =@. copy(internal_waitingtimes/react_rates)
+    dt_list =Vector{typeof(t)}(undef,length(react_rates))
+    @inbounds for i in eachindex(react_rates)
+        dt_list[i] = internal_waitingtimes[i]/react_rates[i]
+    end
     ttnj, next_jump = findmin(dt_list)
-    # sum_rate = 0. # sum_rate is not necessary in MNRM method
     next_jump, ttnj
 end
 
 
 # fill the propensity rates 
 function fill_react_rates!(p::MNRMJumpAggregation,  u, t)
-    react_rates = p.react_rates
+    @unpack react_rates, rates = p
   
     # mass action rates
     majumps   = p.ma_jumps
-    num_majumps      = get_num_majumps(majumps)
-    @inbounds for i in 1:num_majumps
-        react_rates[i] = evalrxrate(u, i, majumps)
-    end
-    # constant jump rates
-    rates = p.rates
-    if !isempty(rates)
-        idx = num_majumps + 1 
-        @inbounds for rate in rates
-            react_rates[idx] = rate(u, p, t)
-            idx  += 1
-        end
+    num_majumps   = get_num_majumps(majumps)
+    num_constjumsp  = length(rates)
+    @inbounds for rx in 1:num_majumps+num_constjumsp
+        react_rates[rx] = calculate_jump_rate(majumps,num_majumps,rates,u,partial_path,t,rx)
     end
 end
 
 
 
-function update_internal_times!(p::MNRMJumpAggregation,  ttnj, rng)
-    p.internal_waitingtimes .-= ttnj*p.react_rates
-    p.internal_waitingtimes[p.next_jump] = randexp(rng)
+@inline function update_internal_times!(p::MNRMJumpAggregation,  ttnj, rng)
+    @unpack internal_waitingtimes, next_jump, react_rates = p
+    @inbounds for i in eachindex(react_rates)
+        internal_waitingtimes[i] -= ttnj*p.react_rates[i]
+    end
+    internal_waitingtimes[next_jump] = randexp(rng)
 end
 
 
