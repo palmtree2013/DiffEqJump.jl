@@ -60,10 +60,6 @@ function generate_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
 end
 
 
-# @fastmath function time_to_next_jump(p::MNRMJumpAggregation{T,S,F1,F2,RNG}, u, params, t) where {T,S,F1 <: Tuple, F2 <: Tuple, RNG}
-    
-    
-# end
 
 @inline function update_internal_times!(p::MNRMJumpAggregation, u, params, t)
     @unpack internal_waitingtimes, cur_rates, rates, ma_jumps, rng = p
@@ -75,7 +71,7 @@ end
     pqdata = [internal_waitingtimes[i]/cur_rates[i] for i in 1:length(cur_rates)]
     # ttnj, next_jump = top_with_handle(MutableBinaryMinHeap(pqdata))
     ttnj, p.next_jump = findmin(pqdata)
-    p.next_jump_time = t + ttnj
+    @fastmath p.next_jump_time = t + ttnj
     # update internal time
     @inbounds for rx in eachindex(cur_rates)
         internal_waitingtimes[rx] -= ttnj*cur_rates[rx]
@@ -88,6 +84,7 @@ end
 # fill the propensity rates 
 function fill_rates_and_get_times!(p::MNRMJumpAggregation,  u, params,  t)
     @unpack internal_waitingtimes, cur_rates, rates, ma_jumps, rng = p
+    # pqdata = [internal_waitingtimes[i]/cur_rates[i] for i in 1:length(cur_rates)]
     pqdata = Vector{typeof(t)}(undef,length(cur_rates))
     @inbounds for i in 1:get_num_majumps(ma_jumps)
         cur_rates[i] = evalrxrate(u, i, ma_jumps)

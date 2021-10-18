@@ -106,7 +106,6 @@ function update_dependent_rates!(p::NRMJumpAggregation, u, params, t)
                 update!(p.pq, rx, typemax(t))
             end
         end
-
     end
     nothing
 end

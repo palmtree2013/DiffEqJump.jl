@@ -37,10 +37,3 @@ end_P_D = componentwise_vectors_timepoint(ens_sol_Direct,250.)[3]
 using Plots
 histogram(end_P)
 histogram!(end_P_D)
-
-
-
-# pqdata = rand(20)
-# using DataStructures
-# pq = DataStructures.MutableBinaryMinHeap(pqdata)
-# pq = top_with_handle(pq)
