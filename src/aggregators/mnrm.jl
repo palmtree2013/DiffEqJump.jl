@@ -31,7 +31,7 @@ function aggregate(aggregator::MNRM, u, p, t, end_time, constant_jumps, ma_jumps
 end
 
 function initialize!(p::MNRMJumpAggregation, integrator, u, params, t)
-    num_reactions = get_num_majumps(p.ma_jumps) + length(p.rates)
+    num_reactions = length(p.react_rates)
     p.internal_waitingtimes = randexp(p.rng,num_reactions) # generate internal waiting time list for the initiation
     generate_jumps!(p, integrator, u, params, t)
 
@@ -66,9 +66,8 @@ function fill_react_rates!(p::MNRMJumpAggregation,  u, t)
   
     # mass action rates
     majumps   = p.ma_jumps
-    num_majumps   = get_num_majumps(majumps)
-    num_constjumsp  = length(rates)
-    @inbounds for rx in 1:num_majumps+num_constjumsp
+    num_majumps = get_num_majumps(majumps)
+    @inbounds for rx in eachindex(react_rates)
         react_rates[rx] = calculate_jump_rate(majumps,num_majumps,rates,u,partial_path,t,rx)
     end
 end

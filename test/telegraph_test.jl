@@ -19,7 +19,7 @@ jump_prob_Direct = JumpProblem(prob,Direct(),majumps,save_positions=(false,false
 # JumpSet(majumps)
 # DiffEqJump.using_params(majumps)
 
-sol = solve(jump_prob_MNRM,SSAStepper(),saveat=1.)
+sol =@time solve(jump_prob_MNRM,SSAStepper(),saveat=1.)
 sol.u
 
 ens_sol_MNRM =@time solve(EnsembleProblem(jump_prob_MNRM), SSAStepper(), EnsembleThreads(); trajectories=1e4)
