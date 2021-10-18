@@ -1,11 +1,11 @@
 # A modified next reaction method 
 struct MNRM <: AbstractAggregatorAlgorithm end
-mutable struct MNRMJumpAggregation{T,S,F1,F2,RNG} <: AbstractSSAJumpAggregator
+mutable struct MNRMJumpAggregation{T,S,F1,F2,RNG,DEPGR} <: AbstractSSAJumpAggregator
   next_jump::Int
   prev_jump::Int
   next_jump_time::T
   end_time::T
-  react_rates::Vector{T}
+  cur_rates::Vector{T}
   sum_rate::T
   ma_jumps::S
   rates::F1
@@ -13,76 +13,107 @@ mutable struct MNRMJumpAggregation{T,S,F1,F2,RNG} <: AbstractSSAJumpAggregator
   save_positions::Tuple{Bool,Bool}
   rng::RNG
   internal_waitingtimes::Vector{T}
+  dep_gr::DEPGR
 end
-MNRMJumpAggregation(nj::Int, njt::T, et::T, crs::Vector{T}, sr::T, maj::S, rs::F1, affs!::F2, sps::Tuple{Bool,Bool}, rng::RNG; internal_waitingtimes, kwargs...) where {T,S,F1,F2,RNG} =
-MNRMJumpAggregation{T,S,F1,F2,RNG}(nj, nj, njt, et, crs, sr, maj, rs, affs!, sps, rng, internal_waitingtimes)
+function MNRMJumpAggregation(nj::Int, njt::T, et::T, crs::Vector{T}, sr::T, maj::S, rs::F1, affs!::F2, sps::Tuple{Bool,Bool}, rng::RNG; num_specs, internal_waitingtimes, dep_graph=nothing, kwargs...) where {T,S,F1,F2,RNG}
 
+    # a dependency graph is needed and must be provided if there are constant rate jumps
+    if dep_graph === nothing
+        if (get_num_majumps(maj) == 0) || !isempty(rs)
+            error("To use ConstantRateJumps with the Next Reaction Method (NRM) algorithm a dependency graph must be supplied.")
+        else
+            dg = make_dependency_graph(num_specs, maj)
+        end
+    else
+        dg = dep_graph
 
+        # make sure each jump depends on itself
+        add_self_dependencies!(dg)
+    end
+    # pq = MutableBinaryMinHeap{T}()
+    MNRMJumpAggregation{T,S,F1,F2,RNG,typeof(dg)}(nj, nj, njt, et, crs, sr, maj, rs, affs!, sps, rng, internal_waitingtimes, dg)
+end
 
-
-  # creating the JumpAggregation structure (tuple-based constant jumps)
 function aggregate(aggregator::MNRM, u, p, t, end_time, constant_jumps, ma_jumps, save_positions, rng; kwargs...)
 
     # handle constant jumps using tuples
     rates, affects! = get_jump_info_tuples(constant_jumps)
     num_reactions = get_num_majumps(ma_jumps) + length(constant_jumps)
     internal_waitingtimes = zeros(typeof(t),num_reactions)
-    build_jump_aggregation(MNRMJumpAggregation, u, p, t, end_time, ma_jumps, rates, affects!, save_positions, rng; internal_waitingtimes = internal_waitingtimes, kwargs...)
+    build_jump_aggregation(MNRMJumpAggregation, u, p, t, end_time, ma_jumps, rates, affects!, save_positions, rng; num_specs = length(u), internal_waitingtimes = internal_waitingtimes, kwargs...)
 end
 
 function initialize!(p::MNRMJumpAggregation, integrator, u, params, t)
-    num_reactions = length(p.react_rates)
+    num_reactions = length(p.cur_rates)
     p.internal_waitingtimes = randexp(p.rng,num_reactions) # generate internal waiting time list for the initiation
-    generate_jumps!(p, integrator, u, params, t)
-
+    fill_rates_and_get_times!(p, u, params, t)
     nothing
 end
-
-# calculate the next jump / jump time
-function generate_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
-    p.next_jump, ttnj = time_to_next_jump(p, u, params, t)
-    @fastmath p.next_jump_time = t + ttnj
-    update_internal_times!(p, ttnj, p.rng)
-    nothing
-end
-
-
-@fastmath function time_to_next_jump(p::MNRMJumpAggregation{T,S,F1,F2,RNG}, u, params, t) where {T,S,F1 <: Tuple, F2 <: Tuple, RNG}
-    
-    @unpack internal_waitingtimes, react_rates = p
-    fill_react_rates!(p, u, t)
-    ttnj, next_jump = findmin([internal_waitingtimes[i]/react_rates[i] for i in eachindex(react_rates)])
-    next_jump, ttnj
-end
-
-
-# fill the propensity rates 
-function fill_react_rates!(p::MNRMJumpAggregation,  u, t)
-    @unpack react_rates, rates = p
-  
-    # mass action rates
-    majumps   = p.ma_jumps
-    num_majumps = get_num_majumps(majumps)
-    @inbounds for rx in eachindex(react_rates)
-        react_rates[rx] = calculate_jump_rate(majumps,num_majumps,rates,u,partial_path,t,rx)
-    end
-end
-
-
-
-@inline function update_internal_times!(p::MNRMJumpAggregation,  ttnj, rng)
-    @unpack internal_waitingtimes, next_jump, react_rates = p
-    @inbounds for i in eachindex(react_rates)
-        internal_waitingtimes[i] -= ttnj*p.react_rates[i]
-    end
-    internal_waitingtimes[next_jump] = randexp(rng)
-end
-
-
 @inline function execute_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
     update_state!(p, integrator, u)
     nothing
 end
+# calculate the next jump / jump time
+function generate_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
+    update_internal_times!(p, u, params, t)
+    nothing
+end
+
+
+# @fastmath function time_to_next_jump(p::MNRMJumpAggregation{T,S,F1,F2,RNG}, u, params, t) where {T,S,F1 <: Tuple, F2 <: Tuple, RNG}
+    
+    
+# end
+
+@inline function update_internal_times!(p::MNRMJumpAggregation, u, params, t)
+    @unpack internal_waitingtimes, cur_rates, rates, ma_jumps, rng = p
+    dep_rxs = p.dep_gr[copy(p.next_jump)]
+    num_majumps = get_num_majumps(ma_jumps)
+    @inbounds for rx in dep_rxs
+        cur_rates[rx] = calculate_jump_rate(ma_jumps,num_majumps,rates,u,partial_path,t,rx)
+    end
+    pqdata = [internal_waitingtimes[i]/cur_rates[i] for i in 1:length(cur_rates)]
+    # ttnj, next_jump = top_with_handle(MutableBinaryMinHeap(pqdata))
+    ttnj, p.next_jump = findmin(pqdata)
+    p.next_jump_time = t + ttnj
+    # update internal time
+    @inbounds for rx in eachindex(cur_rates)
+        internal_waitingtimes[rx] -= ttnj*cur_rates[rx]
+    end
+    internal_waitingtimes[p.next_jump] = randexp(rng)
+    nothing
+end
+
+
+# fill the propensity rates 
+function fill_rates_and_get_times!(p::MNRMJumpAggregation,  u, params,  t)
+    @unpack internal_waitingtimes, cur_rates, rates, ma_jumps, rng = p
+    pqdata = Vector{typeof(t)}(undef,length(cur_rates))
+    @inbounds for i in 1:get_num_majumps(ma_jumps)
+        cur_rates[i] = evalrxrate(u, i, ma_jumps)
+        pqdata[i] = internal_waitingtimes[i]/cur_rates[i]
+    end
+    # constant rates
+    rates = p.rates
+    idx   = get_num_majumps(ma_jumps) + 1
+    @inbounds for rate in rates
+        cur_rates[idx] = rate(u, params, t)
+        pqdata[idx] = internal_waitingtimes[i]/cur_rates[idx]
+        idx += 1
+    end
+    ttnj, p.next_jump = findmin(pqdata)
+    p.next_jump_time = t +ttnj
+    @inbounds for rx in eachindex(cur_rates)
+        internal_waitingtimes[rx] -= ttnj*cur_rates[rx]
+    end
+    internal_waitingtimes[p.next_jump] = randexp(rng)
+end
+
+
+
+
+
+
 
 # Change below
 

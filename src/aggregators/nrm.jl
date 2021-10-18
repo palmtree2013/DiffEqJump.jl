@@ -137,3 +137,5 @@ function fill_rates_and_get_times!(p::NRMJumpAggregation, u, params, t)
     p.pq = MutableBinaryMinHeap(pqdata)
     nothing
 end
+
+
