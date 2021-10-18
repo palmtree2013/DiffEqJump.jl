@@ -51,11 +51,7 @@ end
     
     @unpack internal_waitingtimes, react_rates = p
     fill_react_rates!(p, u, t)
-    dt_list =Vector{typeof(t)}(undef,length(react_rates))
-    @inbounds for i in eachindex(react_rates)
-        dt_list[i] = internal_waitingtimes[i]/react_rates[i]
-    end
-    ttnj, next_jump = findmin(dt_list)
+    ttnj, next_jump = findmin([internal_waitingtimes[i]/react_rates[i] for i in eachindex(react_rates)])
     next_jump, ttnj
 end
 
