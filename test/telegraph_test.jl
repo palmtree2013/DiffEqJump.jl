@@ -12,7 +12,7 @@ u0 = [0,1,0]
 reactstoch = [[1=>1],[2=>1],[1=>1],[3=>1]]
 netstoch = [[1=>-1,2=>1],[1=>1,2=>-1],[3=>1],[3=>-1]]
 prob = DiscreteProblem(u0,(0.0,250.0))
-rates = [.1,0.25,20.,1.]
+rates = [.1,1.25,10.,1.2]
 majumps = MassActionJump(rates,reactstoch,netstoch)
 # dep_graph = 
 jump_prob_MNRM = JumpProblem(prob,MNRM(),majumps,save_positions=(false,false))

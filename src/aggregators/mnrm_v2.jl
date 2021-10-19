@@ -38,9 +38,7 @@ function aggregate(aggregator::MNRM, u, p, t, end_time, constant_jumps, ma_jumps
 
     # handle constant jumps using tuples
     rates, affects! = get_jump_info_tuples(constant_jumps)
-    num_reactions = get_num_majumps(ma_jumps) + length(constant_jumps)
-    internal_waitingtimes = zeros(typeof(t),num_reactions)
-    build_jump_aggregation(MNRMJumpAggregation, u, p, t, end_time, ma_jumps, rates, affects!, save_positions, rng; num_specs = length(u), internal_waitingtimes = internal_waitingtimes, kwargs...)
+    build_jump_aggregation(MNRMJumpAggregation, u, p, t, end_time, ma_jumps, rates, affects!, save_positions, rng; num_specs = length(u), kwargs...)
 end
 
 function initialize!(p::MNRMJumpAggregation, integrator, u, params, t)
@@ -54,43 +52,32 @@ end
 # calculate the next jump / jump time
 function generate_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
     update_internal_times!(p, u, params, t)
+    time_to_next_jump!(p, params, t)
     nothing
 end
 
-
-
 @inline function update_internal_times!(p::MNRMJumpAggregation, u, params, t)
     @unpack pq, cur_rates, rates, ma_jumps, rng = p
-    dep_rxs = p.dep_gr[copy(p.next_jump)]
+    dep_rxs = p.dep_gr[p.next_jump]
     num_majumps = get_num_majumps(ma_jumps)
     @inbounds for rx in dep_rxs
         oldrate = cur_rates[rx]
         @inbounds cur_rates[rx] = calculate_jump_rate(ma_jumps,num_majumps,rates,u,partial_path,t,rx)
         if rx != p.next_jump && oldrate > zero(oldrate)
-            if cur_rates[rx] > zero(eltype(cur_rates))
-                pq[rx] *= oldrate/cur_rates[rx]
-            else 
-                pq[rx] = typemax(t)
-            end
+            pq[rx] *= oldrate/cur_rates[rx]
         else
-            if cur_rates[rx] > zero(eltype(cur_rates))
-                pq[rx] = randexp(rng)/cur_rates[rx]
-            else 
-                pq[rx] = typemax(t)
-            end
+            pq[rx] = randexp(rng)/cur_rates[rx]
         end
     end
-    ttnj, p.next_jump = findmin(pq)
-    @fastmath p.next_jump_time = t + ttnj
-    # update internal time
-    pq .-= ttnj
-    # @inbounds for rx in eachindex(cur_rates)
-    #     internal_waitingtimes[rx] -= ttnj*cur_rates[rx]
-    # end
-    # internal_waitingtimes[p.next_jump] = randexp(rng)
     nothing
 end
 
+function time_to_next_jump!(p, params, t)
+    ttnj, p.next_jump = findmin(p.pq)
+    @fastmath p.next_jump_time = t + ttnj
+    # update absolute time
+    p.pq .-= ttnj
+end
 
 # fill the propensity rates 
 # reevaulate all rates, recalculate all jump times, and reinit the priority queue
@@ -117,7 +104,6 @@ function fill_rates_and_get_times!(p::MNRMJumpAggregation, u, params, t)
     # setup a new indexed priority queue to storing rx times
     p.pq = pqdata
     ttnj, p.next_jump = findmin(p.pq)
-    # ttnj, p.next_jump = findmin(pqdata)
     @fastmath p.next_jump_time = t + ttnj
     nothing
 end
