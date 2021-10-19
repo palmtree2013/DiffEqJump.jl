@@ -1,4 +1,4 @@
-using ModelingToolkit, Catalyst, Symbolics, Statistics, DataFrames
+using ModelingToolkit, Catalyst, Symbolics, Statistics, DataFrames, DiffEqJump, Plots
 function create_neighbour(N;dims=1)
     dims_=Tuple(fill(N,dims))
     dict = Dict{CartesianIndex{dims},Vector{CartesianIndex{dims}}}()
@@ -39,6 +39,7 @@ end
 h = 1 / N
 u0 = 10*ones(Int64, N)
 tf = .01
+fmt = :png
 methods = (Direct(),MNRM(),NRM(),DirectCR(),RSSA())
 shortlabels = [string(leg)[12:end-2] for leg in methods]
 prob    = DiscreteProblem(rs, u0, (0.0, tf), [1 / (h*h)])
@@ -65,6 +66,7 @@ for method in methods
     jump_prob = JumpProblem(rs, prob, method, save_positions=(false, false))
     stepper = SSAStepper()
     t = Vector{Float64}(undef,nsims)
+    println("Benchmarking method: ", method)
     run_benchmark!(t, jump_prob, stepper)
     push!(benchmarks, t)
 end
@@ -84,6 +86,7 @@ df = DataFrame(names=shortlabels,medtimes=medtimes,relmedtimes=(medtimes/medtime
 
 sa = [string(round(mt,digits=4),"s") for mt in df.medtimes]
 bar(df.names,df.relmedtimes,legend=:false, fmt=fmt)
+# df.relmedtimes
 scatter!(df.names, .05 .+ df.relmedtimes, markeralpha=0, series_annotations=sa, fmt=fmt)
 ylabel!("median relative to Direct")
 title!("256 Site 1D Diffusion CTRW")

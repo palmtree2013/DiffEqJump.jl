@@ -30,11 +30,7 @@ function MNRMJumpAggregation(nj::Int, njt::T, et::T, crs::Vector{T}, sr::T, maj:
         # make sure each jump depends on itself
         add_self_dependencies!(dg)
     end
-    # if T == Float64
-        # pq = MutableBinaryMinHeap{Float64, DataStructures.FasterForward}()
-    # else
-        pq = MutableBinaryMinHeap{T}()
-    # end
+    pq = MutableBinaryHeap{T, DataStructures.FasterForward}()
     MNRMJumpAggregation{T,S,F1,F2,RNG,typeof(dg), typeof(pq)}(nj, nj, njt, et, crs, sr, maj, rs, affs!, sps, rng, dg, pq)
 end
 
@@ -116,7 +112,7 @@ function fill_rates_and_get_times!(p::MNRMJumpAggregation, u, params, t)
     end
 
     # setup a new indexed priority queue to storing rx times
-    p.pq = MutableBinaryMinHeap(pqdata)
+    p.pq = MutableBinaryHeap{typeof(t),DataStructures.FasterForward}(pqdata)
     # ttnj, p.next_jump = findmin(p.pq)
     # @fastmath p.next_jump_time = t + ttnj
     time_to_next_jump!(p, params, t)
