@@ -12,7 +12,7 @@ u0 = [0,1,0]
 reactstoch = [[1=>1],[2=>1],[1=>1],[3=>1]]
 netstoch = [[1=>-1,2=>1],[1=>1,2=>-1],[3=>1],[3=>-1]]
 prob = DiscreteProblem(u0,(0.0,250.0))
-rates = [.1,1.25,10.,1.2]
+rates = [.1,0.25,10.,1.2]
 majumps = MassActionJump(rates,reactstoch,netstoch)
 # dep_graph = 
 jump_prob_MNRM = JumpProblem(prob,MNRM(),majumps,save_positions=(false,false))
@@ -26,9 +26,9 @@ sol_NRM =@time solve(jump_prob_NRM,SSAStepper(),saveat=1.)
 sol.u
 sol_NRM.u
 
-ens_sol_MNRM =@time solve(EnsembleProblem(jump_prob_MNRM), SSAStepper(), EnsembleThreads(); trajectories=1e4)
-ens_sol_NRM =@time solve(EnsembleProblem(jump_prob_NRM), SSAStepper(), EnsembleThreads(); trajectories=1e4)
-ens_sol_Direct =@time solve(EnsembleProblem(jump_prob_Direct), SSAStepper(), EnsembleThreads(); trajectories=1e4)
+ens_sol_MNRM =@time solve(EnsembleProblem(jump_prob_MNRM), SSAStepper(), EnsembleThreads(); trajectories=5e4)
+# ens_sol_NRM =@time solve(EnsembleProblem(jump_prob_NRM), SSAStepper(), EnsembleThreads(); trajectories=5e4)
+ens_sol_Direct =@time solve(EnsembleProblem(jump_prob_Direct), SSAStepper(), EnsembleThreads(); trajectories=5e4)
 
 using DifferentialEquations.EnsembleAnalysis
 end_P = componentwise_vectors_timepoint(ens_sol_MNRM,250.)[3]
