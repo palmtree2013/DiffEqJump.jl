@@ -30,7 +30,11 @@ function MNRMJumpAggregation(nj::Int, njt::T, et::T, crs::Vector{T}, sr::T, maj:
         # make sure each jump depends on itself
         add_self_dependencies!(dg)
     end
-    pq = Vector{T}()
+    # if T == Float64
+        # pq = MutableBinaryMinHeap{Float64, DataStructures.FasterForward}()
+    # else
+        pq = MutableBinaryMinHeap{T}()
+    # end
     MNRMJumpAggregation{T,S,F1,F2,RNG,typeof(dg), typeof(pq)}(nj, nj, njt, et, crs, sr, maj, rs, affs!, sps, rng, dg, pq)
 end
 
@@ -64,19 +68,29 @@ end
         oldrate = cur_rates[rx]
         @inbounds cur_rates[rx] = calculate_jump_rate(ma_jumps,num_majumps,rates,u,params,t,rx)
         if rx != p.next_jump && oldrate > zero(oldrate)
-            pq[rx] *= oldrate/cur_rates[rx]
+            if cur_rates[rx] > zero(eltype(cur_rates))
+                update!(pq, rx, pq*oldrate/cur_rates[rx])
+            else
+                update!(pq, rx, typemax(t))
+            end
         else
-            pq[rx] = randexp(rng)/cur_rates[rx]
+            if cur_rates[rx] > zero(eltype(cur_rates))
+                update!(pq, rx, randexp(rng)/cur_rates[rx])
+            else
+                update!(pq, rx, typemax(t))
+            end
         end
     end
     nothing
 end
 
 function time_to_next_jump!(p, params, t)
-    ttnj, p.next_jump = findmin(p.pq)
+    ttnj, p.next_jump = top_with_handle(p.pq)
     @fastmath p.next_jump_time = t + ttnj
     # update absolute time
-    p.pq .-= ttnj
+    for rx in eachindex(p.cur_rates)
+        update!(p.pq, rx, p.pq[rx] - ttnj)
+    end
 end
 
 # fill the propensity rates 
@@ -102,7 +116,7 @@ function fill_rates_and_get_times!(p::MNRMJumpAggregation, u, params, t)
     end
 
     # setup a new indexed priority queue to storing rx times
-    p.pq = pqdata
+    p.pq = MutableBinaryMinHeap(pqdata)
     # ttnj, p.next_jump = findmin(p.pq)
     # @fastmath p.next_jump_time = t + ttnj
     time_to_next_jump!(p, params, t)

@@ -11,10 +11,10 @@ doplot = false
 # dobenchmark = false
 
 dotestmean   = true
-doprintmeans = false
+doprintmeans = true
 
 # SSAs to test
-SSAalgs = (RDirect(), RSSACR(),Direct(), DirectFW(), FRM(), FRMFW(), SortingDirect(), NRM(), RSSA(), DirectCR())
+SSAalgs = (RDirect(), RSSACR(),Direct(), DirectFW(), FRM(), FRMFW(), SortingDirect(), NRM(), RSSA(), DirectCR(), MNRM())
 
 Nsims        = 32000
 tf           = .01
