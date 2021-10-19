@@ -69,7 +69,7 @@ end
         @inbounds cur_rates[rx] = calculate_jump_rate(ma_jumps,num_majumps,rates,u,params,t,rx)
         if rx != p.next_jump && oldrate > zero(oldrate)
             if cur_rates[rx] > zero(eltype(cur_rates))
-                update!(pq, rx, pq*oldrate/cur_rates[rx])
+                update!(pq, rx, pq[rx]*oldrate/cur_rates[rx])
             else
                 update!(pq, rx, typemax(t))
             end
