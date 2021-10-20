@@ -1,4 +1,4 @@
-# A modified next reaction method 
+# A modified next reaction method Heaps version of mnrm_v1
 struct MNRM <: AbstractAggregatorAlgorithm end
 mutable struct MNRMJumpAggregation{T,S,F1,F2,RNG,DEPGR,PQ} <: AbstractSSAJumpAggregator
   next_jump::Int
@@ -43,16 +43,22 @@ end
 
 function initialize!(p::MNRMJumpAggregation, integrator, u, params, t)
     fill_rates_and_get_times!(p, u, params, t)
+    generate_jumps!(p, integrator, u, params, t)
     nothing
 end
+
 @inline function execute_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
     update_state!(p, integrator, u)
+    update_internal_times!(p, u, params, t)
     nothing
 end
 # calculate the next jump / jump time
 function generate_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
-    update_internal_times!(p, u, params, t)
-    time_to_next_jump!(p, params, t)
+    ttnj, p.next_jump = top_with_handle(p.pq)
+    @fastmath p.next_jump_time = t + ttnj
+    for rx in eachindex(p.cur_rates)
+        update!(p.pq, rx, p.pq[rx] - ttnj)
+    end
     nothing
 end
 
@@ -80,14 +86,6 @@ end
     nothing
 end
 
-function time_to_next_jump!(p, params, t)
-    ttnj, p.next_jump = top_with_handle(p.pq)
-    @fastmath p.next_jump_time = t + ttnj
-    # update absolute time
-    for rx in eachindex(p.cur_rates)
-        update!(p.pq, rx, p.pq[rx] - ttnj)
-    end
-end
 
 # fill the propensity rates 
 # reevaulate all rates, recalculate all jump times, and reinit the priority queue
@@ -113,9 +111,6 @@ function fill_rates_and_get_times!(p::MNRMJumpAggregation, u, params, t)
 
     # setup a new indexed priority queue to storing rx times
     p.pq = MutableBinaryHeap{typeof(t),DataStructures.FasterForward}(pqdata)
-    # ttnj, p.next_jump = findmin(p.pq)
-    # @fastmath p.next_jump_time = t + ttnj
-    time_to_next_jump!(p, params, t)
     nothing
 end
 
