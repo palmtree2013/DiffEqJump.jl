@@ -56,6 +56,7 @@ end
 function generate_jumps!(p::MNRMJumpAggregation, integrator, u, params, t)
     ttnj, p.next_jump = top_with_handle(p.pq)
     @fastmath p.next_jump_time = t + ttnj
+    # TODO how to update the whole thing
     for rx in eachindex(p.cur_rates)
         update!(p.pq, rx, p.pq[rx] - ttnj)
     end
