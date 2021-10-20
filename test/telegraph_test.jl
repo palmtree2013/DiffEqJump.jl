@@ -14,12 +14,10 @@ netstoch = [[1=>-1,2=>1],[1=>1,2=>-1],[3=>1],[3=>-1]]
 rates = [.1,0.25,10.,1.2]
 prob = DiscreteProblem(u0,(0.0,200.0))
 majumps = MassActionJump(rates,reactstoch,netstoch)
-# dep_graph = 
+
 jump_prob_MNRM = JumpProblem(prob,MNRM(),majumps,save_positions=(false,false))
 jump_prob_NRM = JumpProblem(prob,NRM(),majumps,save_positions=(false,false))
 jump_prob_Direct = JumpProblem(prob,Direct(),majumps,save_positions=(false,false))
-# JumpSet(majumps)
-# DiffEqJump.using_params(majumps)
 
 sol =@time solve(jump_prob_MNRM,SSAStepper(),saveat=1.)
 sol_NRM =@time solve(jump_prob_NRM,SSAStepper(),saveat=1.)
