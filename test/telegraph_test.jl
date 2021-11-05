@@ -15,11 +15,19 @@ rates = [.1,0.25,10.,1.2]
 prob = DiscreteProblem(u0,(0.0,200.0))
 majumps = MassActionJump(rates,reactstoch,netstoch)
 
-jump_prob_MNRM = JumpProblem(prob,MNRM(),majumps,save_positions=(false,false))
+jump_prob_MNRM = JumpProblem(prob,MNRM(),majumps,save_positions=(true,false))
 jump_prob_NRM = JumpProblem(prob,NRM(),majumps,save_positions=(false,false))
-jump_prob_Direct = JumpProblem(prob,Direct(),majumps,save_positions=(false,false))
+jump_prob_Direct = JumpProblem(prob,Direct(),majumps,save_positions=(true,false))
 
-sol =@time solve(jump_prob_MNRM,SSAStepper(),saveat=1.)
+integrator = DiffEqBase.__init(jump_prob_Direct,SSAStepper(),seed=1234)
+aggregator = integrator.cb.initialize
+# aggregator(integrator)
+aggregator
+# integrator.sol.t
+integrator.tstop
+
+sol =@time solve(jump_prob_Direct,SSAStepper())
+
 sol_NRM =@time solve(jump_prob_NRM,SSAStepper(),saveat=1.)
 sol.u
 sol_NRM.u
