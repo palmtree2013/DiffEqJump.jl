@@ -41,7 +41,7 @@ function NRMJumpAggregation(nj::Int, njt::T, et::T, crs::Vector{T}, sr::T,
                                                             rs, affs!, sps, rng, dg, pq)
 end
 
-+############################# Required Functions ##############################
+############################# Required Functions ##############################
 # creating the JumpAggregation structure (function wrapper-based constant jumps)
 function aggregate(aggregator::NRM, u, p, t, end_time, constant_jumps,
                    ma_jumps, save_positions, rng; kwargs...)
